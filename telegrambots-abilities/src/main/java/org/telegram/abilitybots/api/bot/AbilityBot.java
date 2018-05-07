@@ -302,7 +302,7 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
               .map(entry -> {
                 String name = entry.getValue().name();
                 String info = entry.getValue().info();
-                return format("%s - %s", name, info);
+                return formatCommandReport(name, info);
               })
               .sorted()
               .reduce((a, b) -> format("%s%n%s", a, b))
@@ -311,6 +311,10 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
           silent.send(commands, ctx.chatId());
         })
         .build();
+  }
+
+  protected String formatCommandReport(String name, String info) {
+      return format("%s - %s", name, info);
   }
 
   /**
