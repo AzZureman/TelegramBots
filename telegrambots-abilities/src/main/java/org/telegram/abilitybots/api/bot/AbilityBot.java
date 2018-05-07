@@ -116,7 +116,7 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
   private final String botUsername;
 
   // Ability registry
-  private Map<String, Ability> abilities;
+  protected Map<String, Ability> abilities;
 
   // Reply registry
   private List<Reply> replies;
