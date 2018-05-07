@@ -276,7 +276,8 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
 
   /**
    * <p>
-   * Format of the report:
+   * Format of the report is provided by {@link #formatCommandReport(String name, String info)} method.
+   * By defaulat, format of the report:
    * <p>
    * [command1] - [description1]
    * <p>
@@ -313,6 +314,17 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
         .build();
   }
 
+    /**
+     * <p>
+     * This method formats the report lines for {@link #reportCommands()} method. You can override this
+     * for changing output command's report.
+     * <p>
+     *
+     * @param name the name of reporting command
+     * @param info the information of reporting command
+     *
+     * @return line with command report (name + information), that will be placed in the general report.
+     */
   protected String formatCommandReport(String name, String info) {
       return format("%s - %s", name, info);
   }
