@@ -100,7 +100,10 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
   protected static final String UNBAN = "unban";
   protected static final String BACKUP = "backup";
   protected static final String RECOVER = "recover";
+  protected static final String REPORT = "report";
   protected static final String COMMANDS = "commands";
+  protected static final String GACOMMANDS = "gacommands";
+  protected static final String ACOMMANDS = "acommands";
 
   // Messages
   protected static final String RECOVERY_MESSAGE = "I am ready to receive the backup file. Please reply to this message with the backup file attached.";
@@ -173,6 +176,13 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
    */
   protected Set<Integer> admins() {
     return db.getSet(ADMINS);
+  }
+
+  /**
+   * @return a copy of abilities map
+   */
+  protected Map<String, Ability> getAbilitiesCopy() {
+    return new HashMap<>(abilities);
   }
 
   /**
@@ -276,6 +286,31 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
 
   /**
    * <p>
+   * Once you invoke it, the bot will send the available commands to the chat.
+   * This is a creator ability so only creator can invoke it.
+   * <p>
+   *
+   * @param privacy set privacy group of commands, that will be reported
+   * @param emptyInfo set what kind of commands will be selected - with or without info
+   *
+   * @return report of selected commands
+   */
+  public String commandsByPrivacy(Privacy privacy, boolean emptyInfo) {
+    return abilities.entrySet().stream()
+      .filter(entry -> entry.getValue().privacy().equals(privacy))
+      .filter(entry -> nonNull(entry.getValue().info()) ^ emptyInfo)
+      .map(entry -> {
+        String name = entry.getValue().name();
+        String info = entry.getValue().info();
+        return format("%s - %s", name, info != null ? info : "");
+      })
+      .sorted()
+      .reduce((a, b) -> format("%s%n%s", a, b))
+      .orElse(null);
+  }
+
+  /**
+   * <p>
    * Format of the report:
    * <p>
    * [command1] - [description1]
@@ -284,31 +319,129 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
    * <p>
    * ...
    * <p>
-   * Once you invoke it, the bot will send the available commands to the chat. This is a public ability so anyone can invoke it.
+   * Once you invoke it, the bot will send the available commands to the chat.
+   * This is a creator ability so only creator can invoke it.
+   * <p>
+   * Usage: <code>/report</code>
+   *
+   * @return the ability to report all available commands.
+   */
+  public Ability reportCommands() {
+    return builder()
+        .name(REPORT)
+        .locality(USER)
+        .privacy(CREATOR)
+        .input(0)
+        .action(ctx -> {
+          String commands;
+          for (Privacy privacy: Privacy.values()) {
+            silent.sendMd("`" + privacy + "` commands", ctx.chatId());
+            commands = commandsByPrivacy(privacy, false);
+            if (commands != null)
+              silent.send(commands, ctx.chatId());
+            commands = commandsByPrivacy(privacy, true);
+            if (commands != null)
+              silent.send(commands, ctx.chatId());
+          }
+        })
+        .build();
+  }
+
+  /**
+   * <p>
+   * Format of the report:
+   * <p>
+   * [command1] - [description1]
+   * <p>
+   * [command2] - [description2]
+   * <p>
+   * ...
+   * <p>
+   * Once you invoke it, the bot will send the available commands to the chat.
+   * This is a public ability so anyone can invoke it.
    * <p>
    * Usage: <code>/commands</code>
    *
-   * @return the ability to report commands defined by the child bot.
+   * @return the ability to report public commands defined by the child bot.
    */
-  public Ability reportCommands() {
+  public Ability publicCommands() {
     return builder()
         .name(COMMANDS)
         .locality(ALL)
         .privacy(PUBLIC)
         .input(0)
         .action(ctx -> {
-          String commands = abilities.entrySet().stream()
-              .filter(entry -> nonNull(entry.getValue().info()))
-              .map(entry -> {
-                String name = entry.getValue().name();
-                String info = entry.getValue().info();
-                return format("%s - %s", name, info);
-              })
-              .sorted()
-              .reduce((a, b) -> format("%s%n%s", a, b))
-              .orElse("No public commands found.");
+          String commands = commandsByPrivacy(PUBLIC, false);
+          if (commands != null)
+            silent.send(format("%s%n%s", "Available public commands:", commands), ctx.chatId());
+          else
+            silent.send("No public commands found.", ctx.chatId());
+        })
+        .build();
+  }
 
-          silent.send(commands, ctx.chatId());
+  /**
+   * <p>
+   * Format of the report:
+   * <p>
+   * [command1] - [description1]
+   * <p>
+   * [command2] - [description2]
+   * <p>
+   * ...
+   * <p>
+   * Once you invoke it, the bot will send the available commands to the chat.
+   * This is an group admin ability so only group admin or more empowered user can invoke it.
+   * <p>
+   * Usage: <code>/gacommands</code>
+   *
+   * @return the ability to report group admin commands defined by the child bot.
+   */
+  public Ability groupAdminCommands() {
+    return builder()
+        .name(GACOMMANDS)
+        .locality(ALL)
+        .privacy(GROUP_ADMIN)
+        .input(0)
+        .action(ctx -> {
+          String commands = commandsByPrivacy(GROUP_ADMIN, false);
+          if (commands != null)
+            silent.send(format("%s%n%s", "Available group admin commands:", commands), ctx.chatId());
+          else
+            silent.send("No group admin commands found.", ctx.chatId());
+        })
+        .build();
+  }
+
+  /**
+   * <p>
+   * Format of the report:
+   * <p>
+   * [command1] - [description1]
+   * <p>
+   * [command2] - [description2]
+   * <p>
+   * ...
+   * <p>
+   * Once you invoke it, the bot will send the available admin commands to the chat.
+   * This is an admin ability so only admin or more empowered user can invoke it.
+   * <p>
+   * Usage: <code>/acommands</code>
+   *
+   * @return the ability to report admin commands defined by the child bot.
+   */
+  public Ability adminCommands() {
+    return builder()
+        .name(ACOMMANDS)
+        .locality(ALL)
+        .privacy(ADMIN)
+        .input(0)
+        .action(ctx -> {
+          String commands = commandsByPrivacy(ADMIN, false);
+          if (commands != null)
+            silent.send(format("%s%n%s", "Available admin commands:", commands), ctx.chatId());
+          else
+            silent.send("No admin commands found.", ctx.chatId());
         })
         .build();
   }
@@ -505,10 +638,9 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
     return builder()
         .name(CLAIM)
         .locality(ALL)
-        .privacy(PUBLIC)
+        .privacy(CREATOR)
         .input(0)
         .action(ctx -> {
-          if (ctx.user().id() == creatorId()) {
             Set<Integer> admins = admins();
             int id = creatorId();
             long chatId = ctx.chatId();
@@ -519,10 +651,6 @@ public abstract class AbilityBot extends TelegramLongPollingBot {
               admins.add(id);
               silent.send("You're now my master.", chatId);
             }
-          } else {
-            // This is not a joke
-            abilities.get(BAN).action().accept(newContext(ctx.update(), ctx.user(), ctx.chatId(), ctx.user().username()));
-          }
         })
         .post(commitTo(db))
         .build();

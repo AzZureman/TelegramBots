@@ -74,6 +74,13 @@ public class AbilityBotTest {
   }
 
   @Test
+  public void getAbilitiesCopyTest() {
+    Map<String, Ability> copy = bot.getAbilitiesCopy();
+    copy.clear();
+    assertNotEquals(copy, bot.getAbilitiesCopy());
+  }
+
+  @Test
   public void sendsPrivacyViolation() {
     Update update = mockFullUpdate(MUSER, "/admin");
 
@@ -234,23 +241,6 @@ public class AbilityBotTest {
     Set<Integer> actual = bot.admins();
     Set<Integer> expected = newHashSet(CREATOR.id());
     assertEquals("Creator was not properly added to the super admins set", expected, actual);
-  }
-
-  @Test
-  public void userGetsBannedIfClaimsBot() {
-    addUsers(MUSER);
-    MessageContext context = mock(MessageContext.class);
-    when(context.user()).thenReturn(MUSER);
-
-    bot.claimCreator().action().accept(context);
-
-    Set<Integer> actual = bot.blacklist();
-    Set<Integer> expected = newHashSet(MUSER.id());
-    assertEquals("Could not find user on the blacklist", expected, actual);
-
-    actual = bot.admins();
-    expected = emptySet();
-    assertEquals("Admins set is not empty", expected, actual);
   }
 
   @Test
